@@ -1,43 +1,122 @@
-const getState = ({ getStore, getActions, setStore }) => {
+const getState = ({ getStore, setStore }) => {
 	return {
 		store: {
-			demo: [
-				{
-					title: "FIRST",
-					background: "white",
-					initial: "white"
-				},
-				{
-					title: "SECOND",
-					background: "white",
-					initial: "white"
-				}
-			]
+			contacts: [],
+			isPending: true
 		},
 		actions: {
-			// Use getActions to call a function within a fuction
-			exampleFunction: () => {
-				getActions().changeColor(0, "green");
+			getContactsForAgenda: agendaUrl => {
+				fetch(agendaUrl, {
+					method: "GET"
+				})
+					.then(response => {
+						if (response.ok) {
+							return response.json();
+						}
+					})
+					.then(data => {
+						if (data) {
+							setStore({ contacts: data });
+							setStore({ isPending: false });
+						}
+					})
+					.catch(err => {
+						console.log(err.message);
+						setStore({ isPending: false });
+					});
 			},
-			loadSomeData: () => {
-				/**
-					fetch().then().then(data => setStore({ "foo": data.bar }))
-				*/
+			createContactInAgenda: (baseUrl, body) => {
+				let bodyJSON = JSON.stringify(body);
+				fetch(baseUrl, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: bodyJSON
+				})
+					.then(response => {
+						if (response.ok) {
+							return response.json();
+						}
+					})
+					.then(data => {
+						if (data) {
+							let oldContacts = [...getStore().contacts];
+							let newContacts = [...oldContacts, data];
+							setStore({ contacts: newContacts });
+						}
+					})
+					.catch(err => console.error(err));
 			},
-			changeColor: (index, color) => {
-				//get the store
-				const store = getStore();
+			getContact: url => {
+				fetch(url, {
+					method: "GET"
+				})
+					.then(response => {
+						if (response.ok) {
+							return response.json();
+						}
+					})
+					.then(data => {
+						if (data) {
+							return data;
+						}
+					})
+					.catch(err => console.error(err));
+			},
+			editContact: (baseUrl, id, body) => {
+				let bodyJSON = JSON.stringify(body);
+				fetch(baseUrl + id, {
+					method: "PUT",
+					headers: { "Content-Type": "application/json" },
+					body: bodyJSON
+				})
+					.then(response => {
+						if (response.ok) {
+							return response.json();
+						}
+					})
+					.then(data => {
+						if (data) {
+							let oldContacts = [...getStore().contacts];
+							let modifiedContact = data;
 
-				//we have to loop the entire demo array to look for the respective index
-				//and change its color
-				const demo = store.demo.map((elm, i) => {
-					if (i === index) elm.background = color;
-					return elm;
-				});
+							let contactToModifiedIndex = oldContacts.findIndex(contact => contact.id === id);
+							if (contactToModifiedIndex > -1) {
+								oldContacts[contactToModifiedIndex] = modifiedContact;
+							}
 
-				//reset the global store
-				setStore({ demo: demo });
+							setStore({ contacts: oldContacts });
+						}
+					})
+					.catch(err => console.error(err));
+			},
+			deleteContact: (baseUrl, id) => {
+				fetch(baseUrl + id, {
+					method: "DELETE",
+					headers: {
+						"Content-type": "application/json"
+					}
+				})
+					.then(response => {
+						if (response.ok) {
+							let oldContacts = [...getStore().contacts];
+
+							let positionToDelete = oldContacts.findIndex(contact => {
+								if (contact.id === id) {
+									return true;
+								}
+							});
+
+							oldContacts.splice(positionToDelete, 1);
+
+							setStore({ contacts: oldContacts });
+						} else {
+							console.log("hay algo mal, error : ", response.status);
+						}
+					})
+					.catch(err => console.error(err));
 			}
+
+			// Remember to use the scope: scope.state.store & scope.setState()
 		}
 	};
 };
